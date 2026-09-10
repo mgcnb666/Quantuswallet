@@ -1,0 +1,145 @@
+import 'dart:async';
+import 'dart:isolate';
+import 'package:flutter/services.dart';
+import 'package:human_checksum/human_checksum.dart';
+import 'package:quantus_sdk/src/utils/print.dart';
+
+class HumanReadableChecksumService {
+  static final HumanReadableChecksumService _instance = HumanReadableChecksumService._internal();
+  factory HumanReadableChecksumService() => _instance;
+  HumanReadableChecksumService._internal();
+
+  List<String>? _cachedWordList;
+  Isolate? _isolate;
+  SendPort? _isolateSendPort;
+  final _checkPhraseCache = <String, String>{};
+  Completer<void>? _isolateReadyCompleter;
+
+  Future<void> initialize() async {
+    if (_cachedWordList != null && _isolateSendPort != null && (_isolateReadyCompleter?.isCompleted ?? false)) {
+      return;
+    }
+
+    if (_isolateReadyCompleter != null && !_isolateReadyCompleter!.isCompleted) {
+      await _isolateReadyCompleter!.future;
+      return;
+    }
+
+    _isolateReadyCompleter = Completer<void>();
+
+    try {
+      if (_cachedWordList == null) {
+        final wordList = await rootBundle.loadString('assets/text/human_checkphrase_final_wordlist.txt');
+        _cachedWordList = wordList.split('\n').where((word) => word.isNotEmpty).toList();
+
+        if (_cachedWordList!.length != 2048) {
+          _isolateReadyCompleter!.completeError(Exception('Word list must contain exactly 2048 words'));
+          throw Exception('Word list must contain exactly 2048 words');
+        }
+      }
+
+      if (_isolateSendPort == null) {
+        final receivePort = ReceivePort();
+        _isolate = await Isolate.spawn(_isolateEntry, [receivePort.sendPort, _cachedWordList!]);
+        _isolateSendPort = await receivePort.first as SendPort;
+      }
+
+      _isolateReadyCompleter!.complete();
+    } catch (e, s) {
+      quantusPrint('Error during checksum isolate initialization: $e');
+      quantusPrint('Initialization error stack: $s');
+      if (!(_isolateReadyCompleter?.isCompleted ?? false)) {
+        _isolateReadyCompleter!.completeError(e);
+        // The error is already logged and rethrown; keep the completer's
+        // future from surfacing as an unhandled async error when no
+        // concurrent caller is awaiting it.
+        _isolateReadyCompleter!.future.ignore();
+      }
+      _isolate?.kill();
+      _isolate = null;
+      _isolateSendPort = null;
+      _cachedWordList = null;
+      rethrow;
+    }
+  }
+
+  Future<String?> getHumanReadableName(String address, {upperCase = true}) async {
+    final key = address + (upperCase ? '#U' : '');
+    try {
+      if (_checkPhraseCache.containsKey(key)) {
+        return _checkPhraseCache[key]!;
+      }
+
+      if (!(_isolateReadyCompleter?.isCompleted ?? false)) {
+        await initialize();
+      }
+
+      if (_isolateSendPort == null) {
+        quantusPrint('Error: _isolateSendPort is null after successful initialization wait.');
+        return null;
+      }
+
+      final responsePort = ReceivePort();
+      _isolateSendPort!.send([address, responsePort.sendPort]);
+      final result = await responsePort.first as String?;
+      responsePort.close();
+
+      if (result == null || result.isEmpty) return null;
+
+      var finalResult = result;
+
+      if (upperCase) {
+        finalResult = finalResult
+            .split('-')
+            .map((word) => word[0].toUpperCase() + word.substring(1))
+            .toList()
+            .join('-');
+      }
+      _checkPhraseCache[key] = finalResult;
+      return finalResult;
+    } catch (e, s) {
+      quantusPrint('Error in getHumanReadableName for address $address: $e');
+      quantusPrint('Lookup error stack: $s');
+      _checkPhraseCache.remove(key);
+      return null;
+    }
+  }
+
+  void dispose() {
+    quantusPrint('Disposing HumanReadableChecksumService...');
+    _isolate?.kill(priority: Isolate.immediate);
+    _isolate = null;
+    _isolateSendPort = null;
+    _cachedWordList = null;
+    _checkPhraseCache.clear();
+    if (!(_isolateReadyCompleter?.isCompleted ?? false)) {
+      _isolateReadyCompleter?.completeError('HumanReadableChecksumService disposed');
+    }
+    _isolateReadyCompleter = null;
+    quantusPrint('HumanReadableChecksumService disposed.');
+  }
+}
+
+void _isolateEntry(List<dynamic> args) async {
+  final mainSendPort = args[0] as SendPort;
+  final words = args[1] as List<String>;
+
+  final receivePort = ReceivePort();
+  mainSendPort.send(receivePort.sendPort);
+
+  await for (final message in receivePort) {
+    final address = message[0] as String;
+    final replyTo = message[1] as SendPort;
+
+    try {
+      final humanChecksum = HumanChecksum(words);
+      final result = humanChecksum.addressToChecksum(address).join('-');
+      replyTo.send(result);
+    } catch (e, s) {
+      quantusPrint('Error in checksum isolate processing address $address: $e');
+      quantusPrint('Isolate error stack: $s');
+      replyTo.send('');
+    }
+  }
+  quantusPrint('Checksum isolate message stream closed.');
+}
