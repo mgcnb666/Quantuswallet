@@ -87,7 +87,7 @@ SDK 来源和本地集成补丁记录见 [UPSTREAM.md](UPSTREAM.md)。
 | Gradle Wrapper | 9.3.1 |
 | Android Gradle Plugin | 9.1.0 |
 | Kotlin Plugin | 2.4.0 |
-| Rust | nightly + `rust-src` |
+| Rust | `nightly-2025-12-20` + `rust-src` |
 | Rust Android target | `aarch64-linux-android` |
 
 首次完整构建会下载 Flutter、Gradle、Android SDK/NDK、Pub 和 Rust 依赖，建议准备至少 20 GB 可用空间。
@@ -209,8 +209,8 @@ source "$HOME/.cargo/env"
 只安装本项目需要的 nightly、`rust-src` 和 ARM64 Android target：
 
 ```bash
-rustup toolchain install nightly --profile minimal --component rust-src
-rustup target add --toolchain nightly aarch64-linux-android
+rustup toolchain install nightly-2025-12-20 --profile minimal --component rust-src
+rustup target add --toolchain nightly-2025-12-20 aarch64-linux-android
 ```
 
 不要安装 `armv7-linux-androideabi`、`i686-linux-android` 或 `x86_64-linux-android`。

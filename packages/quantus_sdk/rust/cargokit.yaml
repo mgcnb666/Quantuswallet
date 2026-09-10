@@ -1,10 +1,10 @@
 # cargokit.yaml
 cargo:
   release:
-    toolchain: nightly
+    toolchain: nightly-2025-12-20
     extra_flags:
       - -Zbuild-std=std,panic_abort
   debug:
-    toolchain: nightly
+    toolchain: nightly-2025-12-20
     extra_flags:
       - -Zbuild-std=std,panic_abort
