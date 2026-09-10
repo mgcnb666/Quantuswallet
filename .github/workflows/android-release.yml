@@ -17,8 +17,6 @@ concurrency:
 
 env:
   FLUTTER_SUPPRESS_ANALYTICS: "true"
-  ANDROID_HOME: ${{ runner.temp }}/android-sdk
-  ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
   RUSTFLAGS: >-
     --remap-path-prefix=/home/runner=/home/builder
     --remap-path-prefix=${{ github.workspace }}=/workspace/Quantuswallet
@@ -27,6 +25,9 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    env:
+      ANDROID_HOME: ${{ runner.temp }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
 
     steps:
       - name: Check out source
