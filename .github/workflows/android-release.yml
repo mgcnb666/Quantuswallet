@@ -25,9 +25,6 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    env:
-      ANDROID_HOME: ${{ runner.temp }}/android-sdk
-      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
 
     steps:
       - name: Check out source
@@ -61,15 +58,18 @@ jobs:
           set -euo pipefail
           archive="$RUNNER_TEMP/android-commandlinetools.zip"
           extract_dir="$RUNNER_TEMP/android-commandlinetools"
+          android_sdk_root="$RUNNER_TEMP/android-sdk"
           curl --fail --location --retry 3 \
             https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip \
             --output "$archive"
           echo "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  $archive" \
             | sha256sum --check -
-          mkdir -p "$extract_dir" "$ANDROID_SDK_ROOT/cmdline-tools"
+          mkdir -p "$extract_dir" "$android_sdk_root/cmdline-tools"
           unzip -q "$archive" -d "$extract_dir"
-          mv "$extract_dir/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
-          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          mv "$extract_dir/cmdline-tools" "$android_sdk_root/cmdline-tools/latest"
+          echo "ANDROID_HOME=$android_sdk_root" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$android_sdk_root" >> "$GITHUB_ENV"
+          echo "$android_sdk_root/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
       - name: Install Android SDK components
         shell: bash
