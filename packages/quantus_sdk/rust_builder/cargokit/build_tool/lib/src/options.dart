@@ -47,14 +47,8 @@ class SourceSpanException implements Exception {
   }
 }
 
-enum Toolchain {
-  stable,
-  beta,
-  nightly,
-}
-
 class CargoBuildOptions {
-  final Toolchain toolchain;
+  final String toolchain;
   final List<String> flags;
 
   CargoBuildOptions({
@@ -62,21 +56,23 @@ class CargoBuildOptions {
     required this.flags,
   });
 
-  static Toolchain _toolchainFromNode(YamlNode node) {
+  static String _toolchainFromNode(YamlNode node) {
     if (node case YamlScalar(value: String name)) {
-      final toolchain = Toolchain.values.firstWhereOrNull((element) => element.name == name);
-      if (toolchain != null) {
-        return toolchain;
+      if (RegExp(r'^(stable|beta|nightly)(-\d{4}-\d{2}-\d{2})?$').hasMatch(name)) {
+        return name;
       }
     }
-    throw SourceSpanException('Unknown toolchain. Must be one of ${Toolchain.values.map((e) => e.name)}.', node.span);
+    throw SourceSpanException(
+      'Unknown toolchain. Use stable, beta, nightly, or a dated channel such as nightly-2025-12-20.',
+      node.span,
+    );
   }
 
   static CargoBuildOptions parse(YamlNode node) {
     if (node is! YamlMap) {
       throw SourceSpanException('Cargo options must be a map', node.span);
     }
-    Toolchain toolchain = Toolchain.stable;
+    String toolchain = 'stable';
     List<String> flags = [];
     for (final MapEntry(:key, :value) in node.nodes.entries) {
       if (key case YamlScalar(value: 'toolchain')) {

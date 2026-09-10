@@ -120,8 +120,8 @@ class RustBuilder {
     if (rustup.installedTargets(toolchain) == null) {
       rustup.installToolchain(toolchain);
     }
-    if (toolchain == 'nightly') {
-      rustup.installRustSrcForNightly();
+    if (toolchain.startsWith('nightly')) {
+      rustup.installRustSrc(toolchain);
     }
     if (!rustup.installedTargets(toolchain)!.contains(target.rust)) {
       rustup.installTarget(target.rust, toolchain: toolchain);
@@ -130,7 +130,7 @@ class RustBuilder {
 
   CargoBuildOptions? get _buildOptions => environment.crateOptions.cargo[environment.configuration];
 
-  String get _toolchain => _buildOptions?.toolchain.name ?? 'stable';
+  String get _toolchain => _buildOptions?.toolchain ?? 'stable';
 
   /// Returns the path of directory containing build artifacts.
   Future<String> build() async {

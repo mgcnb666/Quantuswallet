@@ -16,4 +16,4 @@ Local integration patches are intentionally limited to Android build plumbing:
 - expose a supplied-keypair signing entry point so the app never has to persist a plaintext mnemonic.
 - remove the iOS bridge declaration and source from this Android-only project.
 - remove an unreferenced prebuilt Apple framework from the Android-only source tree.
-- pin Cargokit to the known-good `nightly-2025-12-20` toolchain for reproducible CI builds.
+- allow dated Rust channels and pin Cargokit to the known-good `nightly-2025-12-20` toolchain for reproducible CI builds.
